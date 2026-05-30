@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
+import equinox as eqx
 from jaxopt import ProximalGradient
 from model import model, x_np, y_np
 
 
-# 1. Выносим L1 из основной функции потерь. Оставляем только гладкую часть!
-def smooth_loss_only(model, x, y_true):
+# 1. Теперь функция потерь принимает НЕ модель, а кортеж её изменяемых параметров (PyTree)
+# Это нужно, чтобы jaxopt четко понимал, по чем мы берем градиент
+def smooth_loss_only(params, static, x, y_true):
+    # Собираем модель обратно из параметров и статической структуры Equinox
+    model = eqx.combine(params, static)
+
     y_pred = model(x)
     mse_loss = jnp.mean((y_pred - y_true) ** 2)
 
-    # Расстояния между центрами
     centers = model.centers
     dist_matrix = jnp.abs(centers[:, None] - centers[None, :])
     mask = jnp.triu(jnp.ones_like(dist_matrix), k=1)
@@ -24,29 +27,41 @@ def smooth_loss_only(model, x, y_true):
     return mse_loss + 5.0 * repulsion_loss
 
 
-# 2. Определяем проксимальный оператор для L1-регуляризации.
-# Он будет применять штраф ТОЛЬКО к весам (weights), оставляя центры и сигмы в покое.
-def l1_prox(model, hyperparams_lambda, scaling=1.0):
-    # hyperparams_lambda — это сила L1 штрафа (наш lambda_l1)
+# 2. Проксимальный оператор теперь работает с чистым PyTree параметров.
+# Мы применяем soft-thresholding ТОЛЬКО к полю weights.
+def l1_prox(params, hyperparams_lambda, scaling=1.0):
     step = hyperparams_lambda * scaling
 
-    # Мягкое пороговое зануление для весов:
-    new_weights = jnp.sign(model.weights) * jnp.clip(jnp.abs(model.weights) - step, a_min=0.0)
+    # Извлекаем текущие веса из структуры параметров
+    weights = params.weights
 
-    # Возвращаем обновленное PyTree модели
-    return eqx.tree_at(lambda m: m.weights, model, new_weights)
+    # Применяем жесткое зануление (Мягкий порог)
+    new_weights = jnp.sign(weights) * jnp.clip(jnp.abs(weights) - step, a_min=0.0)
 
-
-# 3. Настраиваем проксимальный градиентный спуск (вместо LBFGS)
-pg = ProximalGradient(fun=smooth_loss_only, prox=l1_prox, maxiter=500)
-
-# Запускаем. Второй аргумент — это hyperparams_lambda, который придет в l1_prox
-res = pg.run(model, 0.005, x=x_np, y_true=y_np)
+    # Возвращаем обновленную структуру параметров через equinox
+    return eqx.tree_at(lambda p: p.weights, params, new_weights)
 
 
-# Проверяем, сколько гауссиан осталось активными
-active_gaussians = jnp.sum(jnp.abs(model.weights) > 0.01)
-print(f"\nАктивных гауссиан осталось: {active_gaussians.item()}")
+# 3. Разделяем модель на изменяемые параметры (params) и статическую структуру (static)
+# Это стандартный и самый мощный паттерн в Equinox
+params, static = eqx.partition(model, eqx.is_array)
+
+# 4. Настраиваем ProximalGradient
+# Передаем аргумент argument_nums=(0,), чтобы jaxopt знал, что оптимизируются только params
+pg = ProximalGradient(fun=smooth_loss_only, prox=l1_prox, maxiter=800)
+
+# 5. Запускаем оптимизацию. 
+# Сила L1 штрафа = 0.002. Передаем static как дополнительный аргумент после params!
+res = pg.run(params, 0.002, static=static, x=x_np, y_true=y_np)
+
+# 6. Собираем финальную модель обратно и проверяем результат
+best_model = eqx.combine(res.params, static)
+
+active_gaussians = jnp.sum(jnp.abs(best_model.weights) > 0.01)
+print(f"Активных гауссиан осталось: {active_gaussians.item()}")
+
+# Выведем сами веса, чтобы убедиться, что там теперь честные, абсолютные нули
+print("Финальные веса:", best_model.weights)
 
 # В res.params лежит наша полностью обученная модель Equinox!
 best_model = res.params

@@ -35,8 +35,8 @@ def l1_prox(params, hyperparams_lambda, scaling=1.0):
     # Извлекаем текущие веса из структуры параметров
     weights = params.weights
 
-    # Применяем жесткое зануление (Мягкий порог)
-    new_weights = jnp.sign(weights) * jnp.clip(jnp.abs(weights) - step, a_min=0.0)
+    # Применяем жесткое зануление (Мягкий порог для положительных, зануление для отрицательных)
+    new_weights = jnp.sign(weights) * jnp.clip(weights - step, a_min=0.0)
 
     # Возвращаем обновленную структуру параметров через equinox
     return eqx.tree_at(lambda p: p.weights, params, new_weights)

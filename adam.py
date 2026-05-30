@@ -3,7 +3,7 @@
 import jax
 import jax.numpy as jnp
 import equinox as eqx
-from model import AdaptiveGaussianLayer
+from model import model, x_np, y_np
 import optax  # Библиотека для оптимизаторов в экосистеме JAX
 
 
@@ -36,16 +36,6 @@ def loss_fn(model, x, y_true, min_distance=0.4, lambda_l1=0.005, lambda_repulsio
     return total_loss, (mse_loss, repulsion_loss)
 
 
-# 1. Генерируем данные
-x_np = jnp.linspace(-5, 5, 400)
-y_np = (jnp.exp(-(x_np - 2)**2 / 0.1) + 
-        jnp.exp(-(x_np + 2)**2 / 0.2) + 
-        0.5 * jnp.exp(-(x_np)**2 / 0.05))
-
-# 2. Инициализируем модель и оптимизатор (Optax)
-key = jax.random.PRNGKey(42)
-model = AdaptiveGaussianLayer(max_gaussians=30, x_min=-5.0, x_max=5.0, max_sigma=0.5, key=key)
-
 # Используем Adam из библиотеки optax
 optimizer = optax.adam(learning_rate=0.02)
 opt_state = optimizer.init(model)
@@ -66,7 +56,7 @@ def train_step(model, opt_state, x, y):
     return model, opt_state, loss, aux
 
 
-# 3. Цикл оптимизации
+# Цикл оптимизации
 for epoch in range(1001):
     model, opt_state, loss, (mse, rep) = train_step(model, opt_state, x_np, y_np)
 

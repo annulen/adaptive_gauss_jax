@@ -3,7 +3,7 @@
 import jax
 import jax.numpy as jnp
 from jaxopt import LBFGS  # Импортируем LBFGS из JAXopt
-from model import AdaptiveGaussianLayer
+from model import model, x_np, y_np
 
 # 1. Слегка сглаживаем лосс для корректной работы BFGS
 def smooth_loss_fn(model, x, y_true, min_distance=0.4, lambda_l1=0.005, lambda_repulsion=5.0):
@@ -36,16 +36,6 @@ def jaxopt_objective(params, x, y_true):
 # 3. Настройка и запуск LBFGS
 # Здесь не нужен цикл по эпохам! JAXopt сам проведет всю оптимизацию.
 lbfgs = LBFGS(fun=jaxopt_objective, maxiter=150, implicit_diff=False)
-
-# 4. Генерируем данные
-x_np = jnp.linspace(-5, 5, 400)
-y_np = (jnp.exp(-(x_np - 2)**2 / 0.1) + 
-        jnp.exp(-(x_np + 2)**2 / 0.2) + 
-        0.5 * jnp.exp(-(x_np)**2 / 0.05))
-
-# 5. Инициализируем модель и оптимизатор (Optax)
-key = jax.random.PRNGKey(42)
-model = AdaptiveGaussianLayer(max_gaussians=30, x_min=-5.0, x_max=5.0, max_sigma=0.5, key=key)
 
 # Запускаем оптимизацию (передаем начальную модель как стартовую точку)
 # С помощью run() JAXopt сам откомпилирует всё через JIT и выполнит итерации

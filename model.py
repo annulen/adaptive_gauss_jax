@@ -40,3 +40,13 @@ class AdaptiveGaussianLayer(eqx.Module):
         # Линейная комбинация
         return jnp.dot(rbf, self.weights)
 
+
+# 1. Генерируем данные
+x_np = jnp.linspace(-5, 5, 400)
+y_np = (jnp.exp(-(x_np - 2)**2 / 0.1) +
+        jnp.exp(-(x_np + 2)**2 / 0.2) +
+        0.5 * jnp.exp(-(x_np)**2 / 0.05))
+
+# 2. Инициализируем модель и оптимизатор (Optax)
+key = jax.random.PRNGKey(42)
+model = AdaptiveGaussianLayer(max_gaussians=30, x_min=-5.0, x_max=5.0, max_sigma=0.5, key=key)

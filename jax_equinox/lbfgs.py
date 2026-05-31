@@ -29,15 +29,12 @@ def smooth_loss_fn(model, x, y_true, min_distance=0.4, lambda_l1=0.005, lambda_r
 
     return mse_loss + lambda_l1 * l1_loss + lambda_repulsion * repulsion_loss
 
-# 2. Обертка для JAXopt
-# JAXopt ожидает, что функция принимает плоский вектор параметров, 
-# но Equinox работает с PyTrees. Мы можем передавать модель прямо!
-def jaxopt_objective(params, x, y_true):
-    return smooth_loss_fn(params, x, y_true)
 
-# 3. Настройка и запуск LBFGS
-# Здесь не нужен цикл по эпохам! JAXopt сам проведет всю оптимизацию.
-lbfgs = LBFGS(fun=jaxopt_objective, maxiter=150, implicit_diff=False)
+# 2. Настройка и запуск LBFGS
+#    *  Здесь не нужен цикл по эпохам! JAXopt сам проведет всю оптимизацию.
+#    *  JAXopt ожидает, что функция принимает плоский вектор параметров,
+#       но Equinox работает с PyTrees. Мы можем передавать модель прямо!
+lbfgs = LBFGS(fun=smooth_loss_fn, maxiter=150, implicit_diff=False)
 
 # Запускаем оптимизацию (передаем начальную модель как стартовую точку)
 # С помощью run() JAXopt сам откомпилирует всё через JIT и выполнит итерации

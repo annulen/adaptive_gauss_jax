@@ -44,7 +44,7 @@ opt_update = optimizer.update
 
 
 # Функция одного шага обучения
-@jax.jit
+@eqx.filter_jit
 def train_step(model, opt_state, x, y):
     # jax.value_and_grad вычисляет и значение лосса, и градиенты по отношению к модели
     # has_aux=True говорит, что функция возвращает дополнительные метрики (mse, rep)

@@ -35,6 +35,14 @@ def smooth_loss_only(params, static, x, y_true):
     return mse_loss + 5.0 * repulsion_loss
 
 
+def debias_loss(params, static, x, y_true, active_mask):
+    # Используем smooth_loss_only, принудительно занулив веса неактивных гауссиан
+    # Это занулит градиенты неактивных весов
+    weights = jnp.where(active_mask, params.weights, 0.0)
+    clean_params = eqx.tree_at(lambda p: p.weights, params, weights)
+    return smooth_loss_only(clean_params, static, x, y_true)
+
+
 # 2. Проксимальный оператор теперь работает с чистым PyTree параметров.
 # Мы применяем soft-thresholding ТОЛЬКО к полю weights.
 def l1_prox(params, hyperparams_lambda, scaling=1.0):
@@ -63,8 +71,9 @@ pg = ProximalGradient(fun=smooth_loss_only, prox=l1_prox, maxiter=800)
 res = pg.run(params, 0.002, static=static, x=x_np, y_true=y_np)
 
 # 6. Делаем debiasing - "дожимаем" результат до настоящего минимума
-lbfgs = LBFGS(fun=smooth_loss_only, maxiter=150, implicit_diff=False)
-res = lbfgs.run(res.params, static=static, x=x_np, y_true=y_np)
+lbfgs = LBFGS(fun=debias_loss, maxiter=150, implicit_diff=False)
+active_mask = jnp.abs(res.params.weights) > 0.01
+res = lbfgs.run(res.params, static=static, x=x_np, y_true=y_np, active_mask=active_mask)
 
 # 7. Собираем финальную модель обратно и проверяем результат
 best_model = eqx.combine(res.params, static)

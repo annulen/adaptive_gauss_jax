@@ -16,13 +16,20 @@ def smooth_loss_only(params, static, x, y_true):
     y_pred = model(x)
     mse_loss = jnp.mean((y_pred - y_true) ** 2)
 
+    # Штраф за скученность центров
     centers = model.centers
+    # Матрица попарных расстояний
     dist_matrix = jnp.abs(centers[:, None] - centers[None, :])
     mask = jnp.triu(jnp.ones_like(dist_matrix), k=1)
     pair_distances = dist_matrix * mask
-    too_close = 0.4 - pair_distances
+
+    min_distance = 0.4
+    # Если расстояние > 0 и меньше порога, считаем штраф
+    too_close = min_distance - pair_distances
+    # Убираем пары, которые изначально равны 0 (расстояние элемента с самим собой)
     too_close = jnp.where(mask == 1, too_close, 0.0)
-    repulsion_loss = jnp.sum(jax.nn.softplus(too_close * 10) / 10)
+
+    repulsion_loss = jnp.sum(jnp.clip(too_close, a_min=0.0) ** 2)
 
     return mse_loss + 5.0 * repulsion_loss
 

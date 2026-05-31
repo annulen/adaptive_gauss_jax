@@ -3,7 +3,7 @@
 import jax
 import jax.numpy as jnp
 import equinox as eqx
-from jaxopt import ProximalGradient
+from jaxopt import ProximalGradient, LBFGS
 from model import model, x_np, y_np
 import plot
 
@@ -62,9 +62,12 @@ pg = ProximalGradient(fun=smooth_loss_only, prox=l1_prox, maxiter=800)
 # Сила L1 штрафа = 0.002. Передаем static как дополнительный аргумент после params!
 res = pg.run(params, 0.002, static=static, x=x_np, y_true=y_np)
 
-# 6. Собираем финальную модель обратно и проверяем результат
-best_model = eqx.combine(res.params, static)
+# 6. Делаем debiasing - "дожимаем" результат до настоящего минимума
+lbfgs = LBFGS(fun=smooth_loss_only, maxiter=150, implicit_diff=False)
+res = lbfgs.run(res.params, static=static, x=x_np, y_true=y_np)
 
+# 7. Собираем финальную модель обратно и проверяем результат
+best_model = eqx.combine(res.params, static)
 active_gaussians = jnp.sum(jnp.abs(best_model.weights) > 0.01)
 print(f"Активных гауссиан осталось: {active_gaussians.item()}")
 

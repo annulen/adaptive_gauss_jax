@@ -11,17 +11,24 @@ y_np = (np.exp(-(x_np - 2)**2 / 0.1) +
         0.5 * np.exp(-(x_np)**2 / 0.05))
 
 
-# 1. Определяем кастомный лосс на чистом NumPy
-def loss_function(params, x, y_true, num_gaussians, min_distance=0.4, lambda_l1=0.005):
+def parse_params(params, num_gaussians):
     #params — это плоский вектор [centers..., sigmas..., weights...]
     c = params[0 : num_gaussians]
     s = params[num_gaussians : 2*num_gaussians]
     w = params[2*num_gaussians : 3*num_gaussians]
+    return c, s, w
 
-    # Считаем модель
+
+def model(c, s, w, x):
     dist_sq = (x[:, None] - c) ** 2
     rbf = np.exp(-dist_sq / (2 * s ** 2 + 1e-8))
-    y_pred = np.dot(rbf, w)
+    return np.dot(rbf, w)
+
+
+# 1. Определяем кастомный лосс на чистом NumPy
+def loss_function(params, x, y_true, num_gaussians, min_distance=0.4, lambda_l1=0.005):
+    c, s, w = parse_params(params, num_gaussians)
+    y_pred = model(c, s, w, x)
 
     # MSE
     mse = np.mean((y_pred - y_true) ** 2)
@@ -63,7 +70,7 @@ res = minimize(
 )
 
 # Получаем результат
-final_weights = res.x[2*num_g : 3*num_g]
+_, _, final_weights = parse_params(res.x, num_g)
 active_gaussians = np.sum(final_weights > 0.01)
 
 print(f"Активных гауссиан осталось: {active_gaussians}")

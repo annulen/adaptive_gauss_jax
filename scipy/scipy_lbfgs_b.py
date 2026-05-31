@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.optimize import minimize
+import plot
 
 
 # 0. Генерируем данные
@@ -70,9 +71,11 @@ res = minimize(
 )
 
 # Получаем результат
-_, _, final_weights = parse_params(res.x, num_g)
+final_centers, final_sigmas, final_weights = parse_params(res.x, num_g)
 active_gaussians = np.sum(final_weights > 0.01)
 
 print(f"Активных гауссиан осталось: {active_gaussians}")
 print("Финальные веса:", final_weights)
 print(f"Оптимизация завершена. Финальный лосс: {res.fun:.5f}")
+
+plot.show_plot(x_np, y_np, model(final_centers, final_sigmas, final_weights, x_np))

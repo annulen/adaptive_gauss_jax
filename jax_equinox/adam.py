@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import equinox as eqx
 from model import model, x_np, y_np
 import optax  # Библиотека для оптимизаторов в экосистеме JAX
+import plot
 
 
 def loss_fn(model, x, y_true, min_distance=0.4, lambda_l1=0.005, lambda_repulsion=5.0):
@@ -66,3 +67,6 @@ for epoch in range(1001):
 # Проверяем, сколько гауссиан осталось активными
 active_gaussians = jnp.sum(jnp.abs(model.weights) > 0.01)
 print(f"\nАктивных гауссиан осталось: {active_gaussians.item()}")
+print("Финальные веса:", model.weights)
+
+plot.show_plot(x_np, y_np, model(x_np))

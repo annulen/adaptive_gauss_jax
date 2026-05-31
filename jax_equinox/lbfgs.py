@@ -4,6 +4,8 @@ import jax
 import jax.numpy as jnp
 from jaxopt import LBFGS  # Импортируем LBFGS из JAXopt
 from model import model, x_np, y_np
+import plot
+
 
 # 1. Слегка сглаживаем лосс для корректной работы BFGS
 def smooth_loss_fn(model, x, y_true, min_distance=0.4, lambda_l1=0.005, lambda_repulsion=5.0):
@@ -47,4 +49,7 @@ print(f"\nАктивных гауссиан осталось: {active_gaussians.
 
 # В res.params лежит наша полностью обученная модель Equinox!
 best_model = res.params
+print("Финальные веса:", best_model.weights)
 print(f"Оптимизация завершена. Финальный лосс: {res.state.error:.5f}")
+
+plot.show_plot(x_np, y_np, best_model(x_np))

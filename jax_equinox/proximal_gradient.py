@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import equinox as eqx
 from jaxopt import ProximalGradient
 from model import model, x_np, y_np
+import plot
 
 
 # 1. Теперь функция потерь принимает НЕ модель, а кортеж её изменяемых параметров (PyTree)
@@ -73,3 +74,5 @@ print("Финальные веса:", best_model.weights)
 # В res.params лежит наша полностью обученная модель Equinox!
 best_model = res.params
 print(f"Оптимизация завершена. Финальный лосс: {res.state.error:.5f}")
+
+plot.show_plot(x_np, y_np, best_model(x_np))

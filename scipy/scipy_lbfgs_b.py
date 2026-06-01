@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
-from scipy.optimize import minimize, differential_evolution
+from scipy.optimize import minimize
 import plot
 
 
@@ -57,19 +57,18 @@ bounds = (
     [(0.0, 2.0)] * num_g       # Границы для весов (неотрицательность!)
 )
 
-## 3. Начальное приближение
-#init_params = np.concatenate([
-#    np.linspace(-5, 5, num_g), # центры
-#    np.ones(num_g) * 0.2,       # сигмы
-#    np.ones(num_g) * 0.1        # веса
-#])
-#
-## 4. Запуск оптимизации (SciPy сам подберет L-BFGS-B, так как есть Bounds)
-#res = minimize(
-#    loss_function, init_params, args=(x_np, y_np, num_g),
-#    bounds=bounds, method='L-BFGS-B'
-#)
-res = differential_evolution(loss_function, bounds, args=(x_np, y_np, num_g))
+# 3. Начальное приближение
+init_params = np.concatenate([
+    np.linspace(-5, 5, num_g), # центры
+    np.ones(num_g) * 0.2,       # сигмы
+    np.ones(num_g) * 0.1        # веса
+])
+
+# 4. Запуск оптимизации (SciPy сам подберет L-BFGS-B, так как есть Bounds)
+res = minimize(
+    loss_function, init_params, args=(x_np, y_np, num_g), 
+    bounds=bounds, method='L-BFGS-B'
+)
 
 # Получаем результат
 final_centers, final_sigmas, final_weights = parse_params(res.x, num_g)

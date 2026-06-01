@@ -76,6 +76,7 @@ active_gaussians = np.sum(final_weights > 0.01)
 
 print(f"Активных гауссиан осталось: {active_gaussians}")
 print("Финальные веса:", final_weights)
+print("Финальные центры:", final_centers)
 print(f"Оптимизация завершена. Финальный лосс: {res.fun:.5f}")
 
 plot.show_plot(x_np, y_np, model(final_centers, final_sigmas, final_weights, x_np))
